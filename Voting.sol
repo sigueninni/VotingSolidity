@@ -4,7 +4,9 @@ pragma solidity 0.8.17;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
 
+/// @title Voting
 contract Voting is Ownable {
+    //Workflow status
     enum WorkflowStatus {
         RegisteringVoters,
         ProposalsRegistrationStarted,
@@ -14,6 +16,7 @@ contract Voting is Ownable {
         VotesTallied
     }
 
+    //Type to keep track of General infos for the session
     struct VotingGenInfos {
         uint256 nbVoters;
         uint256 nbProposal;
@@ -22,11 +25,14 @@ contract Voting is Ownable {
         WorkflowStatus sessionStatus;
     }
 
+    //Type for a registered voter
     struct Voter {
         bool isRegistered;
         bool hasVoted;
         uint256 votedProposalId;
     }
+
+    //Type for a proposal
     struct Proposal {
         string description;
         uint256 voteCount;
@@ -34,10 +40,10 @@ contract Voting is Ownable {
 
     uint256 winningProposalId; //Possible to have it in VotingGenInfos but to respect Cyril instructions!
     VotingGenInfos public votingInfos; //General info about each session
-    mapping(address => Voter) voters;
+    mapping(address => Voter) voters; //Mapping voter address to type Voter
     mapping(uint256 => address) votersProposal; //To link proposal id to voter Address , not asked by Cyril!
     uint256[] winners; //List of winners in case of equality of voting
-    Proposal[] public proposals;
+    Proposal[] public proposals; //Array of proposals
 
     event VoterRegisterationStarted(uint256 _indexSession);
     event VoterRegisterationEnded(uint256 _indexSession);
@@ -46,7 +52,6 @@ contract Voting is Ownable {
     event ProposalRegisterationEnded(uint256 _indexSession);
     event VotingRegisterationStarted(uint256 _indexSession);
     event VotingRegisterationEnded(uint256 _indexSession);
-
     event VoterRegistered(address voterAddress); //required by Cyril
     event WorkflowStatusChange(
         WorkflowStatus previousStatus,
@@ -59,51 +64,48 @@ contract Voting is Ownable {
     /***********************    Modifiers   **********************/
     /*************************************************************/
 
-    // Revert if if voter has been already added
+    // Check if voter has been already added
     modifier newVoter(address _address) {
         //Voter has not been already added
         _;
     }
 
-    // Revert if if voter address is 0
+    // Check if voter address is 0
     modifier notZeroAdress(address _address) {
         require(_address != address(0), "Address 0 canno't be a voter!");
         _;
     }
 
+    //Check if actuall caller is a Voter
     modifier onlyVoter() {
         require(voters[msg.sender].isRegistered, "Not a registered Voter!");
         _;
     }
-    // Revert if if voter is registered, no need to register again
+    // check if voter is registered, no need to register again
     modifier voterNotRegistered(address _address) {
         require(!voters[_address].isRegistered, "Voter registered!");
         _;
     }
 
-    // Revert if if voter is Unregistered, no need to unregister again
+    // check if voter is Unregistered, no need to unregister again
     modifier voterRegistered(address _address) {
         require(voters[_address].isRegistered, "Voter Unregistered!");
         _;
     }
 
-    // Revert if voter address is owner/admin adress
+    // check if voter address is owner/admin adress
     modifier notAdminAdress(address _address) {
         require(_address != owner(), "Admin canno't be a voter!");
         _;
     }
-    modifier sessionStarted() {
-        _;
-    } //Session is ongoing so vote can be accounted
-    modifier sessionFinished() {
-        _;
-    } //Session finished, no one can vote anymore
 
+    //check if the caller has already voted, to avoid more than 1 vote
     modifier hasNotVoted() {
         require(!voters[msg.sender].hasVoted, "Already voted!");
         _;
     }
 
+    //Check if the the proposalId voted is valid
     modifier validProposalID(uint256 _idProposal) {
         require(
             _idProposal >= 0 && _idProposal < proposals.length, //valids : from 0 to lenght - 1
@@ -112,6 +114,7 @@ contract Voting is Ownable {
         _;
     }
 
+    //Check if proposal description is not empty
     modifier validProposalDescription(string memory _description) {
         require(
             bytes(_description).length > 0,
@@ -120,21 +123,25 @@ contract Voting is Ownable {
         _;
     }
 
+    //Check if we have at least one proposal to be voted
     modifier proposalsNotEmpty() {
         require(proposals.length > 0, "No proposal found!");
         _;
     }
 
+    //Check if we have at least one voter
     modifier votersNotEmpty() {
         require(votingInfos.nbVoters > 0, "No Voters were registered!");
         _;
     }
 
+    //check if at least we have 1 vote
     modifier votingNotEmpty() {
         require(votingInfos.nbVoting > 0, "No Voting was done!");
         _;
     }
 
+    //Check if we can register proposal
     modifier ProposalsRegistrationOngoing() {
         require(
             votingInfos.sessionStatus ==
@@ -144,6 +151,7 @@ contract Voting is Ownable {
         _;
     }
 
+    //Check if we can vote
     modifier VotingSessionOngoing() {
         require(
             votingInfos.sessionStatus == WorkflowStatus.VotingSessionStarted,
@@ -152,6 +160,7 @@ contract Voting is Ownable {
         _;
     }
 
+    //Check if we votes tallied
     modifier VotesTallied() {
         require(
             votingInfos.sessionStatus == WorkflowStatus.VotesTallied,
@@ -160,6 +169,7 @@ contract Voting is Ownable {
         _;
     }
 
+    //check if proposal registration ended
     modifier ProposalsRegistrationEnded() {
         require(
             votingInfos.sessionStatus ==
@@ -169,6 +179,7 @@ contract Voting is Ownable {
         _;
     }
 
+    //check if voting ended
     modifier VotingSessionEnded() {
         require(
             votingInfos.sessionStatus == WorkflowStatus.VotingSessionEnded,
@@ -324,6 +335,7 @@ contract Voting is Ownable {
         proposals[_idProposal].voteCount++;
         votingInfos.nbVoting++;
         voters[msg.sender].hasVoted = true;
+        voters[msg.sender].votedProposalId = _idProposal;
     }
 
     //*********** Results session functions ***********//
