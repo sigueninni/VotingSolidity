@@ -64,13 +64,6 @@ contract Voting is Ownable {
     /**************************************************************/
     /***********************    Modifiers   **********************/
     /*************************************************************/
-
-    // Check if voter has been already added
-    modifier newVoter(address _address) {
-        //Voter has not been already added
-        _;
-    }
-
     // Check if voter address is 0
     modifier notZeroAdress(address _address) {
         require(_address != address(0), "Address 0 canno't be a voter!");
